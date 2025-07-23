@@ -21,4 +21,6 @@ app.use('/api/admin/admins', require('./routes/admins'));
 app.use('/api/worksheets', require('./routes/worksheets'));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+}); 
