@@ -6,7 +6,10 @@ const path = require('path');
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://bbsheets.vercel.app'],
+  origin: [
+    'https://worksheet-frontend-e71fnonl8-waqar-ahmeds-projects-b1a3517c.vercel.app',
+    'http://localhost:3000'
+  ],
   credentials: true
 }));
 app.use(express.json());
