@@ -59,6 +59,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     await worksheet.save();
     res.json({ success: true, worksheet });
   } catch (err) {
+    console.error('Upload error:', err);
     res.status(500).json({ message: 'Upload failed', error: err.message });
   }
 });
