@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const supabase = require('../supabaseClient');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -22,18 +23,44 @@ const storage = multer.diskStorage({
     cb(null, finalName);
   }
 });
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Upload PDF (protected)
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
   const { title, description, category, tags, grade } = req.body;
-  const fileUrl = `/uploads/${req.file.filename}`;
-  const worksheet = new Worksheet({
-    title, description, category, tags: tags.split(','), grade, fileUrl,
-    originalName: req.file.originalname // save the original filename
-  });
-  await worksheet.save();
-  res.json({ success: true, worksheet });
+  try {
+    const file = req.file;
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const { data, error } = await supabase
+      .storage
+      .from(process.env.SUPABASE_BUCKET)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+    if (error) {
+      return res.status(500).json({ message: 'Failed to upload to Supabase', error });
+    }
+    // Get public URL
+    const { data: publicUrlData } = supabase
+      .storage
+      .from(process.env.SUPABASE_BUCKET)
+      .getPublicUrl(fileName);
+    const publicUrl = publicUrlData.publicUrl;
+    const worksheet = new Worksheet({
+      title,
+      description,
+      category,
+      tags: tags.split(','),
+      grade,
+      fileUrl: publicUrl,
+      originalName: file.originalname
+    });
+    await worksheet.save();
+    res.json({ success: true, worksheet });
+  } catch (err) {
+    res.status(500).json({ message: 'Upload failed', error: err.message });
+  }
 });
 
 // Get all worksheets (public)
