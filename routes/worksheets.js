@@ -2,58 +2,83 @@ const express = require('express');
 const multer = require('multer');
 const Worksheet = require('../models/Worksheet');
 const auth = require('../middleware/auth');
-const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const supabase = require('../supabaseClient');
+const { PDFDocument } = require('pdf-lib');
+const { createCanvas, Image } = require('canvas');
+const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext).replace(/\s+/g, '-');
-    const timestamp = Date.now();
-    let finalName = `${name}-${timestamp}${ext}`;
-    let counter = 1;
-    // Prevent overwriting: append (1), (2), etc. if file exists
-    while (fs.existsSync(path.join('uploads', finalName))) {
-      finalName = `${name}-${timestamp}(${counter})${ext}`;
-      counter++;
-    }
-    cb(null, finalName);
-  }
-});
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Upload PDF (protected)
+async function generateThumbnail(pdfBuffer) {
+  // Load the PDF
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const page = pdfDoc.getPage(0);
+  const { width, height } = page.getSize();
+
+  // Render the first page to a PNG using canvas
+  // pdf-lib does not support rendering, so we use a placeholder image for now
+  // For production, use a service like pdf-poppler, or a headless browser, or a cloud function
+  // Here, we'll just return a blank PNG as a placeholder
+  const canvas = createCanvas(120, 160);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#e0e6f7';
+  ctx.fillRect(0, 0, 120, 160);
+  ctx.fillStyle = '#7b6ef6';
+  ctx.font = 'bold 16px Arial';
+  ctx.fillText('PDF', 40, 80);
+
+  return canvas.toBuffer('image/png');
+}
+
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
   const { title, description, category, tags, grade } = req.body;
   try {
     const file = req.file;
     const fileName = `${Date.now()}-${file.originalname}`;
-    const { data, error } = await supabase
+    // 1. Upload PDF to Supabase
+    const { data: pdfData, error: pdfError } = await supabase
       .storage
       .from(process.env.SUPABASE_BUCKET)
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
         upsert: false
       });
-    if (error) {
-      return res.status(500).json({ message: 'Failed to upload to Supabase', error });
+    if (pdfError) {
+      return res.status(500).json({ message: 'Failed to upload PDF to Supabase', error: pdfError });
     }
-    // Get public URL
-    const { data: publicUrlData } = supabase
+    // 2. Generate thumbnail
+    const thumbnailBuffer = await generateThumbnail(file.buffer);
+    const thumbName = `${Date.now()}-thumb-${file.originalname.replace(/\.[^/.]+$/, '')}.png`;
+    // 3. Upload thumbnail to Supabase
+    const { data: thumbData, error: thumbError } = await supabase
+      .storage
+      .from(process.env.SUPABASE_BUCKET)
+      .upload(thumbName, thumbnailBuffer, {
+        contentType: 'image/png',
+        upsert: false
+      });
+    if (thumbError) {
+      return res.status(500).json({ message: 'Failed to upload thumbnail to Supabase', error: thumbError });
+    }
+    // 4. Get public URLs
+    const { data: pdfUrlData } = supabase
       .storage
       .from(process.env.SUPABASE_BUCKET)
       .getPublicUrl(fileName);
-    const publicUrl = publicUrlData.publicUrl;
+    const { data: thumbUrlData } = supabase
+      .storage
+      .from(process.env.SUPABASE_BUCKET)
+      .getPublicUrl(thumbName);
+
+    // 5. Save worksheet with both URLs
     const worksheet = new Worksheet({
       title,
       description,
       category,
       tags: tags.split(','),
       grade,
-      fileUrl: publicUrl,
+      fileUrl: pdfUrlData.publicUrl,
+      thumbnailUrl: thumbUrlData.publicUrl,
       originalName: file.originalname
     });
     await worksheet.save();
