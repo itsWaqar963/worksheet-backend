@@ -7,8 +7,10 @@ const path = require('path');
 const app = express();
 app.use(cors({
   origin: [
-    'https://worksheet-frontend-e71fnonl8-waqar-ahmeds-projects-b1a3517c.vercel.app',
-    'http://localhost:3000'
+    'https://worksheet-frontend-e71fnonl8-waqar-ahmeds-projects-b1a3517c.vercel.app', // Vercel-assigned domain
+    'https://bbsheets.vercel.app', // Custom domain
+    'https://bbsheet.vercel.app', // Custom domain
+    'http://localhost:3000' // Local development
   ],
   credentials: true
 }));
