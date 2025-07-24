@@ -8,8 +8,8 @@ const app = express();
 app.use(cors({
   origin: [
     'https://worksheet-frontend-e71fnonl8-waqar-ahmeds-projects-b1a3517c.vercel.app', // Vercel-assigned domain
-    'https://bbsheets.vercel.app', // Custom domain
-    'https://bbsheet.vercel.app', // Custom domain
+    'https://bbsheets.vercel.app', // Custom domain (double 's')
+    'https://bbsheet.vercel.app', // Custom domain (single 's')
     'http://localhost:3000' // Local development
   ],
   credentials: true
