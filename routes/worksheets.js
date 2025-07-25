@@ -27,7 +27,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Upload PDF (protected)
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
-  const { title, description, category, tags, grade } = req.body;
+  let { title, description, category, subject, tags, grade, ageGroup } = req.body;
+  if (!subject || subject.trim() === "") subject = "Other";
   try {
     const file = req.file;
     const fileName = `${Date.now()}-${file.originalname}`;
@@ -51,8 +52,10 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
       title,
       description,
       category,
-      tags: tags.split(','),
+      subject,
+      tags: tags ? tags.split(',') : [],
       grade,
+      ageGroup,
       fileUrl: publicUrl,
       originalName: file.originalname
     });
