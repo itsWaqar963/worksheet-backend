@@ -7,7 +7,6 @@ const WorksheetSchema = new mongoose.Schema({
   tags: [String],
   grade: String,
   fileUrl: String,
-  thumbnailUrl: String,
   originalName: String, // store the original filename
   uploadDate: { type: Date, default: Date.now }
 });
