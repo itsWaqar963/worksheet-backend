@@ -27,7 +27,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Upload PDF (protected)
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
-  let { title, description, category, subject, tags, grade, ageGroup } = req.body;
+  let { title, description, subject, grade, ageGroup } = req.body;
   if (!subject || subject.trim() === "") subject = "Other";
   try {
     const file = req.file;
@@ -51,9 +51,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     const worksheet = new Worksheet({
       title,
       description,
-      category,
       subject,
-      tags: tags ? tags.split(',') : [],
       grade,
       ageGroup,
       fileUrl: publicUrl,
