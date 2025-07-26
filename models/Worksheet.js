@@ -9,6 +9,7 @@ const WorksheetSchema = new mongoose.Schema({
   grade: String,
   ageGroup: String,
   fileUrl: String,
+  fileName: String, // Supabase storage file name
   originalName: String, // store the original filename
   uploadDate: { type: Date, default: Date.now }
 });

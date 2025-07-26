@@ -57,6 +57,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
       grade,
       ageGroup,
       fileUrl: publicUrl,
+      fileName, // Save Supabase file name
       originalName: file.originalname
     });
     await worksheet.save();
@@ -98,8 +99,26 @@ router.put('/:id', auth, async (req, res) => {
 
 // Delete worksheet (protected)
 router.delete('/:id', auth, async (req, res) => {
-  await Worksheet.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
+  try {
+    const worksheet = await Worksheet.findById(req.params.id);
+    if (!worksheet) return res.status(404).json({ message: 'Not found' });
+    // Attempt to delete file from Supabase
+    if (worksheet.fileName) {
+      const { error: supabaseError } = await supabase
+        .storage
+        .from(process.env.SUPABASE_BUCKET)
+        .remove([worksheet.fileName]);
+      if (supabaseError && supabaseError.statusCode !== '404') {
+        // Log but proceed with DB deletion
+        console.error('Supabase file delete error:', supabaseError);
+      }
+    }
+    await Worksheet.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ message: 'Delete failed', error: err.message });
+  }
 });
 
 // Popular worksheets (public)
